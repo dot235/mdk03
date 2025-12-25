@@ -1,6 +1,9 @@
 ISP HQ-RTR BR-RTR
 nano /etc/apt/sources.list
 
+nano /etc/resolv.conf
+nameserver 8.8.8.8
+
 /////////
 /1 Имена/
 /////////
