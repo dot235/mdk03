@@ -44,6 +44,18 @@ HQ-SRV = hostnamectl set-hostname hq-srv.au-team.irpo; exec bash
 HQ-CLI = hostnamectl set-hostname hq-cli.au-team.irpo; exec bash
 BR-SRV = hostnamectl set-hostname br-srv.au-team.irpo; exec bash
 
+//////////
+/11 Время/
+//////////
+
+timedatectl set-timezone Asia/Krasnoyarsk
+
+Если часы не совпадают
+
+timedatectl set-time "YYYY-MM-DD HH:MM:SS"
+
+YY:MM:DD (Year, Month, Day) HH:MM:SS (Hour, Minute, Seconds)
+
 ////////////////
 /3 Пользователи/
 ////////////////
@@ -82,18 +94,6 @@ sudo -i
 su - net_admin
 
 sudo -i
-
-//////////
-/11 Время/
-//////////
-
-timedatectl set-timezone Asia/Krasnoyarsk
-
-Если часы не совпадают
-
-timedatectl set-time "YYYY-MM-DD HH:MM:SS"
-
-YY:MM:DD (Year, Month, Day) HH:MM:SS (Hour, Minute, Seconds)
 
 ///////////////////////////////////
 /2(8) Настройка маршрутизации и IP/
