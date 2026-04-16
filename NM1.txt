@@ -48,6 +48,8 @@ BR-SRV = hostnamectl set-hostname br-srv.au-team.irpo; exec bash
 /11 Время/
 //////////
 
+На всех машинах
+
 timedatectl set-timezone Asia/Krasnoyarsk
 
 Если часы не совпадают
