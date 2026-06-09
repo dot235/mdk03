@@ -2,11 +2,6 @@
 		/////Модуль 2/////
 		//////////////////
 
-ОБЯЗАТЕЛЬНО!!! Нужно в DHCP поменять ip-адрес домена HQ-SRV на BR-SRV,
-иначе HQ-CLI не сможет подключиться к контроллеру домена
-
-
-
 		/////Задание 1/////
 		
 		HQ-RTR:
@@ -44,7 +39,8 @@ samba-tool group addmembers hq hquser4
 samba-tool user create hquser5 Pa$$word
 samba-tool group addmembers hq hquser5
 		HQ-CLI:
-apt update && apt install -y realmd sssd sssd-tools libnss-sss libpam-sss adcli packagekit
+apt update 
+apt install -y realmd sssd sssd-tools libnss-sss libpam-sss adcli packagekit
 realm join -U admininstrator au-team.irpo
 pam-auth-update --enable mkhomedir
 realm deny --all
@@ -79,10 +75,6 @@ nano /etc/chrony/chrony.conf
 systemctl restart chronyd
 
 		/////Задание 5/////
-		
-Рабочий каталог ansible должен располагаться в /etc/ansible
-Все указанные машины должны без предупреждений и ошибок отвечать
-pong на команду ping в ansible посланную с BR-SRV
 
 apt install ansible sshpass -y
 mkdir -p /etc/ansible
@@ -97,6 +89,9 @@ nano /etc/ansible/hosts
 	
 	[br]
 	192.168.3.1	ansible_user=net_admin	ansible_password=P@ssw0rd
+
+	[all:vars]
+	ansible_python_interprefer=/usr/bin/python3.13
 
 	На HQ-RTR и BR-RTR:
 apt install openssh-server
@@ -169,26 +164,132 @@ apt update
 apt install apache2 -y
 apt install mariadb-server mariadb-client -y
 apt install php8.4 php8.4-mysqli -y
-Скачиваем образ Additional.iso и извлекаем его через Xarchiver
-В проводнике папку Additional перетаскиваем в /root
-Копируем дамп
+	Скачиваем образ Additional.iso и извлекаем его через Xarchiver
+	https://file.nkestudy.ru/-rVVjGTUfGF
+	В проводнике папку Additional перетаскиваем в /root
 cp /root/Additional/web/dump.sql /tmp
-Заходим в mysql
 mysql -u root
-Создаем базу данных
 	CREATE DATABASE webdb;
 	CREATE USER 'web'@'localhost' IDENTIFIED BY 'P@ssw0rd';
 	GRANT ALL PRIVILEGES ON webdb.* TO 'web'@'localhost';
 	FLUSH PRIVILEGES;
 	EXIT;
-Импортируем дамп
 mysql -u root webdb < /tmp/dump.sql
-Создаем папку
 mkdir -p /var/www/html
-Копируем конфиг сайта
 cp /root/Additional/web/index.php /var/www/html
-Задаем права
 chown -R www-data:www-data /var/www/html
 chmod -R 755 /var/www/html
-Заходим в сам конфиг сайта и меняем значения
 nano /var/www/html/index.php
+	<?php
+	$servername = "localhost";
+	$username = "web";
+	$password = "P@ssw0rd";
+	$dbname = "webdb";
+rm -f /var/www/html/index.html
+systemctl restart apache2
+	HQ-RTR:
+nano /etc/dhcp/dhcpd.conf
+option domain-name-server 192.168.100.2;
+systemctl restart isc-dhcp-server
+	HQ-CLI:
+/etc/resolv.conf
+nameserver 192.168.100.2
+http://192.168.100.2/
+
+		/////Задание 8/////
+		
+	HQ-SRV:
+nano /etc/apache2/sites-available/000-default.conf
+<VirtualHost *:8080>
+nano /etc/apache2/ports.conf
+Listen 8080
+systemctl restart apache2
+	HQ-RTR и BR-RTR:
+nano /etc/nftables.conf
+table ip nat {
+<<<Добавить>>>
+	chain prerouting {
+		type nat hook prerouting priority 0;
+		iifname "ens3" tcp dport 8080 dnat to 192.168.100.2:8080
+		iifname "ens3" tcp dport 2026 dnat to 192.168.100.2:2026
+	}
+<<<Добавить>>>
+systemctl restart networking
+	ISP:
+ssh sshuser@172.16.1.2 -p 2026
+ssh sshuser@172.16.2.2 -p 2026
+http://172.16.1.2:8080
+http://172.16.2.2:8080
+
+		/////Задание 9/////
+
+	ISP:
+apt install nginx -y
+nano /etc/nginx/sites-available/proxy
+
+server {
+	listen 80;
+	server_name web.au-team.irpo;
+	location / {
+		proxy_pass http://172.16.1.2:8080;
+		proxy_set_header Host $host;
+		proxy_set_header X-Real_IP $remote_addr;
+	}
+}
+server {
+	listen 80;
+	server_name docker.au-team.irpo;
+	location / {
+		proxy_pass http://172.16.2.2:8080;
+		proxy_set_header Host $host;
+		proxy_set_header X-Real_IP $remote_addr;
+	}
+}
+
+ln -s /etc/nginx/sites-available/proxy /etc/nginx/sites-enabled
+nano /etc/nginx/nginx.conf
+server_names_hash_bucket_size 64;
+nano /etc/hosts
+172.16.1.1	web.au-team.irpo
+172.16.2.1	docker.au-team.irpo
+systemctl restart nginx
+http://web.au-team.irpo
+http://docker.au-team.irpo
+
+		/////Задание 10/////
+
+ISP
+apt install apache2
+htpasswd –bc /etc/nginx/.htpasswd WEB P@ssw0rd
+nano /etc/nginx/sites-enabled/proxy
+
+server {
+	listen 80;
+	server_name web.au-team.irpo;
+	auth_basic "Restricted Access";
+	auth_basic_user_file /etc/nginx/.htpasswd;
+	location / {
+		proxy_pass http://172.16.1.2:8080;
+		proxy_set_header Host $host;
+		proxy_set_header X-Real_IP $remote_addr;
+	}
+}
+server {
+	listen 80;
+	server_name docker.au-team.irpo;
+	location / {
+		proxy_pass http://172.16.2.2:8080;
+		proxy_set_header Host $host;
+		proxy_set_header X-Real_IP $remote_addr;
+	}
+}
+
+systemctl restart nginx
+Теперь при заходе на http://web.au-team.irpo сайт будет требовать имя пользователя и пароль
+Вводим имя пользователя: WEB
+Пароль: P@ssw0rd
+HQ-CLI
+Скачиваем с интернета Yandex.deb
+Перекидываем его на /root
+apt install ./Yandex.deb -y
+yandex-browser-stable --no-sandbox
